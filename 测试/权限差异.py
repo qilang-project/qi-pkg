@@ -11,27 +11,27 @@ import gzip
 import os
 import sys
 
-根, 包 = sys.argv[1], sys.argv[2]
-b = gzip.decompress(open(包, "rb").read())
+root, pkg = sys.argv[1], sys.argv[2]
+b = gzip.decompress(open(pkg, "rb").read())
 i = 0
-长名 = None
-不符 = []
+long_name = None
+mismatch = []
 while i + 512 <= len(b):
     h = b[i : i + 512]
     if h[0] == 0:
         break
-    名 = h[:100].split(b"\0")[0].decode("utf-8", "replace")
-    if 长名:
-        名, 长名 = 长名, None
-    大小 = int((h[124:135].decode().strip("\0 ") or "0"), 8)
+    name = h[:100].split(b"\0")[0].decode("utf-8", "replace")
+    if long_name:
+        name, long_name = long_name, None
+    size = int((h[124:135].decode().strip("\0 ") or "0"), 8)
     if h[156:157] == b"L":
-        长名 = b[i + 512 : i + 512 + 大小 - 1].decode("utf-8", "replace")
+        long_name = b[i + 512 : i + 512 + size - 1].decode("utf-8", "replace")
     else:
-        猜的 = h[100:107].decode() == "0000755"
-        真的 = os.access(os.path.join(根, 名), os.X_OK)
-        if 猜的 != 真的:
-            不符.append(名)
-    i += 512 + ((大小 + 511) // 512) * 512
-print(len(不符))
-for n in 不符[:5]:
+        guessed = h[100:107].decode() == "0000755"
+        actual = os.access(os.path.join(root, name), os.X_OK)
+        if guessed != actual:
+            mismatch.append(name)
+    i += 512 + ((size + 511) // 512) * 512
+print(len(mismatch))
+for n in mismatch[:5]:
     print("      " + n, file=sys.stderr)

@@ -11,7 +11,11 @@ cd "$(dirname "$0")/.."
 ROOT="$(cd .. && pwd)"
 QI_BIN="${QI_BIN:-$ROOT/target/release/qi}"
 export QI_RUNTIME_LIB="${QI_RUNTIME_LIB:-$ROOT/qi-runtime/target/release/libqi_runtime.a}"
-PORT="${QIPKG_TEST_PORT:-43517}"
+# 端口现挑一个空闲的，不再写死 43517：这台 Mac 上 43517 被别的常驻程序占着，
+# 假注册中心起不来，而下面的探活只看「有没有人应答」—— 那个陌生服务回 404
+# 也算"就绪"，于是 14 项全红、错误全是 "404 page not found"，跟 qipkg 本身
+# 毫无关系。要固定端口就传 QIPKG_TEST_PORT。
+PORT="${QIPKG_TEST_PORT:-$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')}"
 export QI_REGISTRY="http://127.0.0.1:$PORT"
 export QI_REGISTRY_TOKEN="端到端测试用的假token"
 
@@ -38,12 +42,14 @@ ok "qipkg"
 step "起假注册中心 :$PORT"
 python3 测试/假注册中心.py "$WORK/store" "$PORT" >"$WORK/srv.log" 2>&1 &
 SRV_PID=$!
+# 探活要认**假注册中心自己的回应**（包列表 JSON 里有 "packages"），不能只看
+# 端口通不通 —— 端口被别人占着时那个"别人"也会应答。
 for i in 1 2 3 4 5 6 7 8 9 10; do
-    curl -s -o /dev/null "http://127.0.0.1:$PORT/api/v1/packages" && break
+    curl -s "http://127.0.0.1:$PORT/api/v1/packages" 2>/dev/null | grep -q '"packages"' && break
     sleep 0.3
 done
-if ! curl -s -o /dev/null "http://127.0.0.1:$PORT/api/v1/packages"; then
-    cat "$WORK/srv.log"; echo "假注册中心起不来"; exit 1
+if ! curl -s "http://127.0.0.1:$PORT/api/v1/packages" 2>/dev/null | grep -q '"packages"'; then
+    cat "$WORK/srv.log"; echo "假注册中心起不来（端口 $PORT 上应答的不是它）"; exit 1
 fi
 ok "已就绪"
 
