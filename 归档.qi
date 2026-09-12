@@ -38,8 +38,10 @@
 // ══════════════════════════════════════════════════════════════════
 
 // 任意层级命中即整棵剪掉。tests/ 在列表里是**发布减肥**：测试只对开发者有意义。
+// 必须与 qi/src/package/archive.rs 的 排除目录 **逐项一致** ——
+// 两个打包器打出的 tar.gz 是逐字节比对过的，差一项 sha256 就对不上。
 公开 函数 排除目录表() : 字符串 {
-    返回 ".git\ntarget\ntarget-wt\nqi_packages\ntests";
+    返回 ".git\ntarget\ntarget-wt\nqi_packages\ntests\nnode_modules\n.venv\n__pycache__";
 }
 
 // .qi_registry.toml / .qi_source.toml 是**本机安装记录**，不是包内容 ——
